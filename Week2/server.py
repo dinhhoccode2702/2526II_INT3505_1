@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, make_response, request
 from functools import wraps
 
 app = Flask(__name__)
@@ -7,7 +7,7 @@ app = Flask(__name__)
 API_KEYS = {
     "admin": "admin123",
     "user1": "user456"
-}
+}   
 
 products = [
     {"id": 1, "name": "Laptop"},
@@ -38,7 +38,9 @@ def api_key_required(f):
 
 @app.route("/products", methods=["GET"])
 def get_products():
-    return jsonify(products)
+    response = make_response(jsonify(products))
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return response
 
 
 @app.route("/products/<int:id>", methods=["GET"])
