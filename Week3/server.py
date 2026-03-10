@@ -12,7 +12,7 @@ candidates = [
 def get_candidates():
     return jsonify(candidates), 200
 
-@app.route("/get_candidates_details/<int:id>", methods=["GET"])
+@app.route("/candidates/<int:id>", methods=["GET"])
 def get_candidate(id):
     for c in candidates:
         if c["id"] == id:
@@ -20,7 +20,7 @@ def get_candidate(id):
 
     return jsonify({"error": "Candidate not found"}), 404
 
-@app.route("/Candidates", methods=["POST"])
+@app.route("/candidates", methods=["POST"])
 def create_candidate():
     data = request.json
     candidates.append(data)
@@ -30,7 +30,7 @@ def create_candidate():
         "message": "Candidate created"
     }), 201
 
-@app.route("/Candidates/<int:id>", methods=["DELETE"])
+@app.route("/candidates/<int:id>", methods=["DELETE"])
 def delete_candidate(id):
 
     global candidates
