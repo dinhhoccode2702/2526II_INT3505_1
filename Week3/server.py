@@ -8,19 +8,29 @@ candidates = [
     {"id": 3, "name": "Charlie", "position": "Tester"}
 ]
 
-@app.route("/candidates", methods=["GET"])
+@app.route("/api/v1/candidates", methods=["GET"])
 def get_candidates():
-    return jsonify(candidates), 200
+    return jsonify({
+        "success": True,
+        "data": candidates,
+        "message": "Candidates retrieved successfully"
+    }), 200
 
-@app.route("/candidates/<int:id>", methods=["GET"])
+@app.route("/api/v1/candidates/<int:id>", methods=["GET"])
 def get_candidate(id):
     for c in candidates:
         if c["id"] == id:
-            return jsonify(c), 200
+            return jsonify({
+                "success": True,
+                "data": c,
+                "message": "Candidate retrieved successfully"
+            }), 200
+    return jsonify({
+        "success": False,
+        "message": "Candidate not found"
+    }), 404
 
-    return jsonify({"error": "Candidate not found"}), 404
-
-@app.route("/candidates", methods=["POST"])
+@app.route("/api/v1/candidates", methods=["POST"])
 def create_candidate():
     data = request.json
     candidates.append(data)
@@ -30,7 +40,7 @@ def create_candidate():
         "message": "Candidate created"
     }), 201
 
-@app.route("/candidates/<int:id>", methods=["DELETE"])
+@app.route("/api/v1/candidates/<int:id>", methods=["DELETE"])
 def delete_candidate(id):
 
     global candidates
