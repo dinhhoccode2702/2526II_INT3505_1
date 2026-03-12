@@ -38,7 +38,7 @@ def api_key_required(f):
 
 @app.route("/products", methods=["GET"])
 def get_products():
-    response = make_response(jsonify(products))
+    response = make_response(jsonify(10/0), 200)
     response.headers["Cache-Control"] = "public, max-age=60"
     return response
 
@@ -90,5 +90,5 @@ def delete_product(current_user, id):
 
     return "", 204
 
-
-    
+if __name__ == "__main__":
+    app.run(debug=True)
