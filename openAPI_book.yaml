@@ -6,8 +6,31 @@ servers:
   - url: http://localhost:5000
 paths:
   /api/v1/books:
-    get: {}
-    post: {}
+    get:
+      summary: Lấy danh sách sách
+      responses:
+        "200":
+          description: Lấy danh sách sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookListResponse" 
+      
+    post:
+      summary: Tạo sách mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookRequest"
+      responses:
+        "201":
+          description: Tạo sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
 
   /api/v1/books/search:
     get: {}
@@ -17,3 +40,63 @@ paths:
     put: {}
     patch: {}
     delete: {}
+
+components:
+  schemas:
+
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        author:
+          type: string
+        genre:
+          type: string
+        published_year:
+          type: integer
+        price:
+          type: number
+          format: float
+        is_available:
+          type: boolean
+
+    CreateBookRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        genre:
+          type: string
+        published_year:
+          type: integer
+        price:
+          type: number
+        is_available:
+          type: boolean
+
+    BookResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/Book"
+        message:
+          type: string
+
+    BookListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Book"
+        message:
+          type: string
