@@ -1,0 +1,19 @@
+openapi: 3.0.0
+info:
+  title: Book API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+paths:
+  /api/v1/books:
+    get: {}
+    post: {}
+
+  /api/v1/books/search:
+    get: {}
+
+  /api/v1/books/{book_id}:
+    get: {}
+    put: {}
+    patch: {}
+    delete: {}
