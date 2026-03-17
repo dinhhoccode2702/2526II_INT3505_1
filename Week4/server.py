@@ -114,7 +114,7 @@ def delete_book(book_id):
 		return jsonify({"success": False, "data": None, "message": "Không tìm thấy sách"}), 404
 
 	books.remove(book)
-	return jsonify({"success": True, "data": book, "message": "Xóa sách thành công"}), 200
+	return "", 204
 
 
 if __name__ == "__main__":
