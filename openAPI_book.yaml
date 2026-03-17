@@ -33,14 +33,91 @@ paths:
                 $ref: "#/components/schemas/BookResponse"
 
   /api/v1/books/search:
-    get: {}
+    get: 
+      summary: Tìm kiếm sách
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Tìm kiếm theo tiêu đề sách
+      responses:
+        "200":
+          description: Tìm kiếm sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookListResponse"
 
   /api/v1/books/{book_id}:
-    get: {}
-    put: {}
-    patch: {}
-    delete: {}
+    get: 
+      summary: Lấy thông tin sách theo id
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lấy thông tin sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
 
+    put: 
+      summary: Cập nhật thông tin sách
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookRequest"
+      responses:
+        "200":
+          description: Cập nhật thông tin sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+    patch:
+      summary: Cập nhật một phần sách
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Cập nhật thành công
+    delete: 
+      summary: Xóa sách
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Xóa sách thành công
+        "404":
+          description: Sách không tồn tại
+                 
 components:
   schemas:
 
