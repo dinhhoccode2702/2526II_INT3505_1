@@ -1,7 +1,7 @@
 #%RAML 1.0
 title: Library API
 version: v1
-baseUri: https://2526-ii-int-3505-1-4967-git-main-dinhhoccodes-projects.vercel.app
+baseUri: https://2526-ii-int-3505-1-4967.vercel.app/
 
 types:
   Book:
@@ -15,11 +15,8 @@ types:
     type: object
     properties:
       title: string
-      required:
-        - title
       author: string
-    required:
-      - author
+    
 
 /books:
   get:

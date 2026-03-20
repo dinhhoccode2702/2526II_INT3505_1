@@ -3,7 +3,7 @@ info:
   title: Library API
   version: 1.0.0
 servers:
-  - url: https://2526-ii-int-3505-1-4967-git-main-dinhhoccodes-projects.vercel.app
+  - url: https://2526-ii-int-3505-1-4967.vercel.app/
 
 paths:
   /books:
