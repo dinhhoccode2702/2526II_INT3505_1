@@ -1,0 +1,83 @@
+#%RAML 1.0
+title: Library API
+version: v1
+baseUri: http://localhost:5000
+
+types:
+  Book:
+    type: object
+    properties:
+      id: integer
+      title: string
+      author: string
+
+  CreateBookRequest:
+    type: object
+    properties:
+      title: string
+      required:
+        - title
+      author: string
+    required:
+      - author
+
+/books:
+  get:
+    description: Get all books
+    responses:
+      200:
+        body:
+          application/json:
+            type: Book[]
+
+  post:
+    description: Create a new book
+    body:
+      application/json:
+        type: CreateBookRequest
+    responses:
+      201:
+        body:
+          application/json:
+            type: Book
+      400:
+        description: Missing required fields
+
+  /{id}:
+    uriParameters:
+      id:
+        type: integer
+        required: true
+
+    get:
+      description: Get book by ID
+      responses:
+        200:
+          body:
+            application/json:
+              type: Book
+        404:
+          description: Book not found
+
+    put:
+      description: Update book
+      body:
+        application/json:
+          type: CreateBookRequest
+      responses:
+        200:
+          body:
+            application/json:
+              type: Book
+        400:
+          description: Missing required fields
+        404:
+          description: Book not found
+
+    delete:
+      description: Delete book
+      responses:
+        204:
+          description: Deleted successfully
+        404:
+          description: Book not found

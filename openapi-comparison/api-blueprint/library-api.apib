@@ -1,0 +1,109 @@
+FORMAT: 1A
+HOST: http://localhost:5000
+
+# Library API
+
+API quản lý sách đơn giản sử dụng Flask.
+
+# Group Books
+
+## Books Collection [/books]
+
+### Get all books [GET]
+
++ Response 200 (application/json)
+
+        [
+          {
+            "id": 1,
+            "title": "Book A",
+            "author": "Author A"
+          }
+        ]
+
+
+### Create a new book [POST]
+
++ Request (application/json)
+
+        {
+          "title": "New Book",
+          "author": "New Author"
+        }
+
++ Response 201 (application/json)
+
+        {
+          "id": 1,
+          "title": "New Book",
+          "author": "New Author"
+        }
+
++ Response 400 (application/json)
+
+        {
+          "message": "Missing required fields: title, author"
+        }
+
+
+## Book Detail [/books/{id}]
+
++ Parameters
+    + id: 1 (number, required) - ID của sách
+
+### Get book by ID [GET]
+
++ Response 200 (application/json)
+
+        {
+          "id": 1,
+          "title": "Book A",
+          "author": "Author A"
+        }
+
++ Response 404 (application/json)
+
+        {
+          "message": "Book not found"
+        }
+
+
+### Update book [PUT]
+
++ Request (application/json)
+
+        {
+          "title": "Updated Book",
+          "author": "Updated Author"
+        }
+
++ Response 200 (application/json)
+
+        {
+          "id": 1,
+          "title": "Updated Book",
+          "author": "Updated Author"
+        }
+
++ Response 400 (application/json)
+
+        {
+          "message": "Missing required fields: title, author"
+        }
+
++ Response 404 (application/json)
+
+        {
+          "message": "Book not found"
+        }
+
+
+### Delete book [DELETE]
+
++ Response 204
+
++ Response 404 (application/json)
+
+        {
+          "message": "Book not found"
+        }
