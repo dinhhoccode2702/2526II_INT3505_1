@@ -1,3 +1,4 @@
+// Base URL for testing: https://2526-ii-int-3505-1-4967-git-main-dinhhoccodes-projects.vercel.app
 import "@typespec/http";
 import "@typespec/rest";
 

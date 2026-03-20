@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, abort
 from flask_cors import CORS
+import os
 
 app = Flask(__name__)
 
@@ -7,8 +8,16 @@ app = Flask(__name__)
 books = []
 current_id = 1
 
-# // add cors
-CORS(app)
+# Configure CORS: allow specific origins (can be overridden via env var)
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS")
+if ALLOWED_ORIGINS:
+    origins = [o.strip() for o in ALLOWED_ORIGINS.split(",")]
+else:
+    # Default: allow all origins for testing on deployed Vercel URL
+    origins = "*"
+
+# When origins is "*", do not enable credentials (browsers disallow wildcard with credentials)
+CORS(app, resources={r"/*": {"origins": origins}}, supports_credentials=False)
 
 
 # GET /books - Get all books
@@ -86,4 +95,6 @@ def delete_book(id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("DEBUG", "False").lower() in ("1", "true", "yes")
+    app.run(host="0.0.0.0", port=port, debug=debug)

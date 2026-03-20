@@ -58,3 +58,11 @@
 
 * Còn mới, chưa phổ biến
 * Tool chưa mạnh bằng OpenAPI
+
+---
+
+## Deployment / Testing (Vercel)
+
+- Deployed URL: https://2526-ii-int-3505-1-4967-git-main-dinhhoccodes-projects.vercel.app/
+
+
