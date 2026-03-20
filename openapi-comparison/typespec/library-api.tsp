@@ -14,7 +14,7 @@ using TypeSpec.OpenAPI;
 @service(#{
   title: "Library API"
 })
-@server("http://localhost:5000", "Local server")
+@server("https://2526-ii-int-3505-1-4967.vercel.app/")
 namespace LibraryAPI;
 
 model Book {
