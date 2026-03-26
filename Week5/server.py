@@ -53,6 +53,34 @@ def get_books_cursor():
         "limit": limit
     }), 200
 
+@app.route('/api/books/page', methods=['GET'])
+def get_books_page():
+    """1c. Lấy danh sách tài liệu/sách (Phân trang kiểu Page-based)"""
+    # Lấy page hiện tại (mặc định 1) và limit (mặc định 10)
+    page = request.args.get('page', default=1, type=int) or 1
+    limit = request.args.get('limit', default=10, type=int) or 10
+    
+    if page < 1:
+        page = 1
+        
+    # Tính toán offset từ page
+    offset = (page - 1) * limit
+    
+    # Cắt mảng lấy số lượng sách cần hiển thị trong trang
+    paginated_books = books[offset : offset + limit]  # type: ignore
+    
+    # Tính tổng số sách và tổng số trang
+    total_items = len(books)
+    total_pages = (total_items + limit - 1) // limit
+    
+    return jsonify({
+        "data": paginated_books,
+        "page": page,
+        "limit": limit,
+        "total_items": total_items,
+        "total_pages": total_pages
+    }), 200
+
 @app.route('/api/books', methods=['POST'])
 def add_book():
     """2. Thêm một sách mới vào thư viện"""
