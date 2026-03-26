@@ -14,8 +14,20 @@ loans = [
 
 @app.route('/api/books', methods=['GET'])
 def get_books():
-    """1. Lấy danh sách tài liệu/sách"""
-    return jsonify(books), 200
+    """1. Lấy danh sách tài liệu/sách (có Pagination)"""
+    # Lấy tham số limit và offset từ URL (mặc định lấy từ vị trí 0, mỗi lần 10 item)
+    offset = request.args.get('offset', default=0, type=int)
+    limit = request.args.get('limit', default=10, type=int)
+    
+    # Slice list books dựa trên offset và limit
+    paginated_books = books[offset : offset + limit]
+    
+    return jsonify({
+        "total": len(books),
+        "offset": offset,
+        "limit": limit,
+        "data": paginated_books
+    }), 200
 
 @app.route('/api/books', methods=['POST'])
 def add_book():
