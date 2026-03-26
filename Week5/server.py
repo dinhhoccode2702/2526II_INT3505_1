@@ -1,14 +1,15 @@
 from flask import Flask, jsonify, request
+from typing import Any, Dict, List
 
 app = Flask(__name__)
 
 # Mock database
-books = [
+books: List[Dict[str, Any]] = [
     {"id": 1, "title": "The Great Gatsby", "author": "F. Scott Fitzgerald", "available": True},
     {"id": 2, "title": "1984", "author": "George Orwell", "available": False}
 ]
 
-loans = [
+loans: List[Dict[str, Any]] = [
     {"id": 1, "book_id": 2, "user_id": 101, "status": "borrowed"}
 ]
 
@@ -16,17 +17,40 @@ loans = [
 def get_books():
     """1. Lấy danh sách tài liệu/sách (có Pagination)"""
     # Lấy tham số limit và offset từ URL (mặc định lấy từ vị trí 0, mỗi lần 10 item)
-    offset = request.args.get('offset', default=0, type=int)
-    limit = request.args.get('limit', default=10, type=int)
+    # Thêm 'or 0', 'or 10' để Pylance (Type Checker) hiểu chắc chắn đây là kiểu int
+    offset = request.args.get('offset', default=0, type=int) or 0
+    limit = request.args.get('limit', default=10, type=int) or 10
     
     # Slice list books dựa trên offset và limit
-    paginated_books = books[offset : offset + limit]
+    paginated_books = books[offset : offset + limit]  # type: ignore
     
     return jsonify({
         "total": len(books),
         "offset": offset,
         "limit": limit,
         "data": paginated_books
+    }), 200
+
+@app.route('/api/books/cursor', methods=['GET'])
+def get_books_cursor():
+    """1b. Lấy danh sách tài liệu/sách (Phân trang kiểu Cursor)"""
+    # Cursor ở đây thường là ID của item cuối cùng ở trang trước
+    cursor = request.args.get('cursor', default=0, type=int) or 0
+    limit = request.args.get('limit', default=10, type=int) or 10
+    
+    # Lọc ra các sách có id lớn hơn cursor (giả sử sách đã được sắp xếp tăng dần theo id)
+    filtered_books = [b for b in books if isinstance(b.get("id"), int) and b["id"] > cursor]
+    
+    # Lấy số lượng theo limit
+    paginated_books = filtered_books[:limit]  # type: ignore
+    
+    # Lấy cursor cho lần gọi tiếp theo (nếu có dữ liệu)
+    next_cursor = paginated_books[-1]["id"] if paginated_books else None
+    
+    return jsonify({
+        "data": paginated_books,
+        "next_cursor": next_cursor,
+        "limit": limit
     }), 200
 
 @app.route('/api/books', methods=['POST'])
