@@ -1,23 +1,70 @@
 from flask import Flask, request, jsonify
+import jwt
+import datetime
+from functools import wraps
 
 app = Flask(__name__)
+# Khóa bí mật dùng để mã hóa và giải mã JWT
+app.config['SECRET_KEY'] = 'SECRET_KEY_KTHDV'
 
-# Giả lập Cơ sở dữ liệu (In-memory Database)
-# Chú ý: Ở bài thực tế, mật khẩu phải được băm (bcrypt) trước khi lưu
-users_db = {
-    "sinhvien1": {
+# ==========================================
+# GIẢ LẬP DATABASE (Lưu trên RAM)
+# Chuyển thành dạng mảng (List) để giống cấu trúc bảng Record dưới DB
+# ==========================================
+users_db = [
+    {
         "id": 1,
-        "password": "123", 
+        "username": "sinhvien",
+        "password": "123", # User 1: Dành để test quyền USER
         "role": "USER",
-        "name": "Nguyễn Văn Sinh Viên"
+        "name": "Nguyễn Văn A"
     },
-    "thaygiao": {
+    {
         "id": 2,
-        "password": "456",
+        "username": "giangvien",
+        "password": "456", # User 2: Dành để test quyền ADMIN
         "role": "ADMIN",
-        "name": "Tiến sĩ A"
+        "name": "Tiến sĩ Đoàn B"
     }
-}
+]
+
+# Hàm rút trích user từ Database giả lập
+def get_user_by_username(username):
+    # Trả về User đầu tiên khớp Tên đăng nhập
+    return next((u for u in users_db if u["username"] == username), None)
+
+# ==========================================
+# MIDDLEWARE KIỂM TRA TOKEN (JWT)
+# ==========================================
+def token_required(f):
+    @wraps(f)
+    def check_token(*args, **kwargs):
+        token = None
+        # Lấy token từ Header "Authorization: Bearer <token>"
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            if "Bearer" in auth_header:
+                token = auth_header.split()[1] 
+
+        if not token:
+            return jsonify({'error': 'Không tìm thấy Token xác thực!'}), 401
+        
+        try:
+            # Giải mã Token
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            # Lưu payload vào request để sử dụng ở các hàm API phía sau
+            request.current_user = data 
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token đã hết hạn!'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Token không hợp lệ!'}), 401
+        
+        return f(*args, **kwargs) 
+    return check_token
+
+# ==========================================
+# CÁC ROUTE API
+# ==========================================
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -25,35 +72,51 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
-    user = users_db.get(username)
+    # Tra cứu User từ DB
+    user = get_user_by_username(username)
+
     if user and user['password'] == password:
+        # Bước 1: Khởi tạo Token (Lưu ID và Chức vụ, TTL: 15 phút)
+        token = jwt.encode({
+            'user_id': user['id'],
+            'role': user['role'],
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+        }, app.config['SECRET_KEY'], algorithm="HS256")
+        
         return jsonify({
-            "message": f"Xin chào {user['name']}", 
-            "status": "Chưa có Token, lát mình code vô đoạn này!"
+            "message": f"Đăng nhập thành công!", 
+            "access_token": token,
+            "user_info": {"name": user['name'], "role": user['role']}
         }), 200
     
-    return jsonify({"error": "Đăng nhập thất bại. Chắc nhìn nhầm pass!"}), 401
+    return jsonify({"error": "Tài khoản hoặc mật khẩu không chính xác."}), 401
 
 @app.route('/public/news', methods=['GET'])
 def get_public_news():
-    return jsonify({"news": "Sáng mai trường cho nghỉ học do cúp điện"}), 200
+    return jsonify({"news": "Thông báo: Thay đổi lịch đào tạo tuần tới."}), 200
 
 @app.route('/api/profile', methods=['GET'])
+@token_required # Bắt buộc phải có thẻ JWT hợp lệ để chạy hàm này
 def get_profile():
-    # Tạm thời chưa bảo mật, mở cửa thả cửa
-    return jsonify({"message": "Đây là hồ sơ mật của bạn", "gpa": "3.8"}), 200
+    # Lấy thông tin user gửi lên từ Middleware `token_required`
+    user_data = request.current_user 
+    return jsonify({
+        "message": "Trích xuất hồ sơ cá nhân thành công.", 
+        "gpa": "3.8",
+        "token_payload": user_data 
+    }), 200
 
 @app.route('/api/admin/dashboard', methods=['GET'])
 def get_dashboard():
-    return jsonify({"secret_logs": "Hệ thống đang bị quá tải, sếp tăng lương đi!"}), 200
+    # *Lưu ý: Sau này có thể viết thêm @role_required('ADMIN') ở đây
+    return jsonify({"message": "Lấy dữ liệu giám sát hệ thống thành công.", "cpu_usage": "45%"}), 200
 
 @app.route('/api/transfer', methods=['POST'])
 def transfer_money():
     data = request.json
     amount = data.get('amount', 0)
-    return jsonify({"message": f"Biến động số dư: Trừ {amount}$ đi vào hư vô"}), 200
-
+    return jsonify({"message": f"Khởi tạo giao dịch chuyển khoản {amount} VNĐ thành công."}), 200
 
 if __name__ == '__main__':
-    print("🔥 Khởi động Server thành công! API lắng nghe ở Cổng 5000...")
+    print("Khởi động Máy chủ API tại http://127.0.0.1:5000")
     app.run(debug=True, port=5000)
