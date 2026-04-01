@@ -63,6 +63,28 @@ def token_required(f):
     return check_token
 
 # ==========================================
+# MIDDLEWARE PHÂN QUYỀN (AUTHORIZATION)
+# ==========================================
+def role_required(required_role):
+    def decorator(f):
+        @wraps(f)
+        def check_role(*args, **kwargs):
+            # Biến này đã được sinh ra từ Middleware `token_required` ở trên chạy trước
+            user_data = getattr(request, 'current_user', None)
+            
+            # Cơ chế vặn quyền (Check Role) - Trả về Lỗi 403 Forbidden nếu không đủ cấp
+            if not user_data or user_data.get('role') != required_role:
+                return jsonify({
+                    'error': 'Từ chối truy cập (Forbidden). Bạn không đủ thẩm quyền!',
+                    'required_role': required_role,
+                    'current_role': user_data.get('role') if user_data else None
+                }), 403
+            
+            return f(*args, **kwargs)
+        return check_role
+    return decorator
+
+# ==========================================
 # CÁC ROUTE API
 # ==========================================
 
@@ -107,8 +129,9 @@ def get_profile():
     }), 200
 
 @app.route('/api/admin/dashboard', methods=['GET'])
+@token_required          
+@role_required('ADMIN') 
 def get_dashboard():
-    # *Lưu ý: Sau này có thể viết thêm @role_required('ADMIN') ở đây
     return jsonify({"message": "Lấy dữ liệu giám sát hệ thống thành công.", "cpu_usage": "45%"}), 200
 
 @app.route('/api/transfer', methods=['POST'])
