@@ -1,0 +1,7 @@
+allowUnicodeIdentifiers: true
+pythonPostProcessFile: true
+# Tên package chính
+packageName: OpenAPISpec 
+# Chỉ sinh các controller interface
+controllerPackage: controllers
+
