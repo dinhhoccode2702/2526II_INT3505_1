@@ -16,7 +16,7 @@ class Book(Model):
         """Book - a model defined in OpenAPI
 
         :param id: The id of this Book.  # noqa: E501
-        :type id: int
+        :type id: str
         :param title: The title of this Book.  # noqa: E501
         :type title: str
         :param author: The author of this Book.  # noqa: E501
@@ -31,7 +31,7 @@ class Book(Model):
         :type is_available: bool
         """
         self.openapi_types = {
-            'id': int,
+            'id': str,
             'title': str,
             'author': str,
             'genre': str,
@@ -70,22 +70,22 @@ class Book(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def id(self) -> int:
+    def id(self) -> str:
         """Gets the id of this Book.
 
 
         :return: The id of this Book.
-        :rtype: int
+        :rtype: str
         """
         return self._id
 
     @id.setter
-    def id(self, id: int):
+    def id(self, id: str):
         """Sets the id of this Book.
 
 
         :param id: The id of this Book.
-        :type id: int
+        :type id: str
         """
 
         self._id = id
