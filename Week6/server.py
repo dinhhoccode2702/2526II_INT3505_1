@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 import jwt
 import datetime
 from functools import wraps
@@ -24,17 +24,18 @@ def get_user_by_username(username):
 # KHỞI TẠO CẶP TOKEN (Access + Refresh)
 # Gọi 1 hàm này là đẻ ra cả 2 loại thẻ
 # ==========================================
-def create_tokens(user_id, role):
+def create_tokens(user_id, role, scopes=[]):
     access_token = jwt.encode({
         'user_id': user_id,
         'role': role,
-        'token_type': 'access',       
+        'scopes': scopes,              # Danh sách quyền được cấp
+        'token_type': 'access',
         'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
     }, app.config['SECRET_KEY'], algorithm="HS256")
 
     refresh_token = jwt.encode({
         'user_id': user_id,
-        'token_type': 'refresh',       
+        'token_type': 'refresh',
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
     }, app.config['SECRET_KEY'], algorithm="HS256")
 
@@ -48,21 +49,24 @@ def token_required(f):
     @wraps(f)
     def check_token(*args, **kwargs):
         token = None
+
+        # Cách 1: Lấy token từ Header (Phương thức thông thường)
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
             if "Bearer" in auth_header:
                 token = auth_header.split()[1]
+
+        # Cách 2: Lấy token từ HttpOnly Cookie (Phương thức bảo mật - JS không sờ được)
+        if not token:
+            token = request.cookies.get('access_token')
 
         if not token:
             return jsonify({'error': 'Yêu cầu Access Token hợp lệ!'}), 401
 
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-
-            # Quan trọng: Chặn việc dùng Refresh Token để gọi API thông thường
             if data.get('token_type') != 'access':
                 return jsonify({'error': 'Sai loại Token! Chỉ chấp nhận Access Token.'}), 401
-
             request.current_user = data
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Access Token hết hạn! Dùng Refresh Token để đổi vé mới.'}), 401
@@ -94,21 +98,50 @@ def role_required(required_role):
     return decorator
 
 # ==========================================
+# DECORATOR 3: Kiểm tra Scope (Phạm vi quyền)
+# Dán @scope_required('write:transfer') để bảo vệ hành động nhạy cảm
+# ==========================================
+def scope_required(required_scope):
+    def decorator(f):
+        @wraps(f)
+        def check_scope(*args, **kwargs):
+            user_data = getattr(request, 'current_user', None)
+            granted_scopes = user_data.get('scopes', []) if user_data else []
+
+            if required_scope not in granted_scopes:
+                return jsonify({
+                    'error': 'Không đủ phạm vi quyền hạn (Scope) để thực hiện hành động này!',
+                    'required_scope': required_scope,
+                    'your_scopes': granted_scopes
+                }), 403
+
+            return f(*args, **kwargs)
+        return check_scope
+    return decorator
+
+# ==========================================
 # CÁC ROUTE API
 # ==========================================
 
-# API 1: Đăng nhập - Trả về cả Access Token + Refresh Token
+# API 1: Đăng nhập
+# Client khai báo muốn xin những quyền (scopes) gì
+# Ví dụ gửi: { "username": "sinhvien", "password": "123", "scopes": ["read:profile"] }
+# Nếu không gửi scopes → chỉ có quyền cơ bản, KHÔNG có quyền chuyển tiền
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
     user = get_user_by_username(data.get('username'))
 
+    # Lấy danh sách quyền mà client XIN (Giống bạn bấm "Cho phép" trên popup OAuth)
+    requested_scopes = data.get('scopes', [])  # Mặc định: không xin quyền gì thêm
+
     if user and user['password'] == data.get('password'):
-        access, refresh = create_tokens(user['id'], user['role'])
+        access, refresh = create_tokens(user['id'], user['role'], requested_scopes)
         return jsonify({
             "message": "Đăng nhập thành công!",
-            "access_token": access,    # Dùng cái này gọi API (sống 15p)
-            "refresh_token": refresh,  # Dùng cái này đổi thẻ mới khi hết hạn (sống 7 ngày)
+            "access_token": access,
+            "refresh_token": refresh,
+            "granted_scopes": requested_scopes,  # Cho thấy đã cấp những quyền nào
             "user_info": {"name": user['name'], "role": user['role']}
         }), 200
 
@@ -171,14 +204,58 @@ def get_dashboard():
         "status": "Secure"
     }), 200
 
-# API 6: Chuyển tiền - Cần Token (Demo Scope trong slide)
+# API 6: Chuyển tiền - Cần Token VÀ phải có Scope 'write:transfer'
+# Demo: Scope kiểm soát HÀNH ĐỘNG CỤ THỂ, không phải vai trò con người
 @app.route('/api/transfer', methods=['POST'])
 @token_required
+@scope_required('write:transfer')  # Chỉ cho phép nếu Token có ghi scope này
 def transfer_money():
     amount = request.json.get('amount', 0)
     return jsonify({"message": f"Khởi tạo giao dịch {amount} VNĐ thành công."}), 200
 
 
+# =====================================================================
+# DEMO CHỐNG XSS: Đăng nhập an toàn bằng HttpOnly Cookie
+# =====================================================================
+
+# API 7: Đăng nhập bảo mật (Lưu Token vào HttpOnly Cookie)
+# So sánh với API /login thông thường trả token trong JSON Body
+@app.route('/api/login-secure', methods=['POST'])
+def login_secure():
+    data = request.json
+    user = get_user_by_username(data.get('username'))
+
+    if user and user['password'] == data.get('password'):
+        access, refresh = create_tokens(user['id'], user['role'])
+
+        # Thay vì trả token trong JSON → Nét thẳng vào Cookie
+        response = make_response(jsonify({
+            "message": "Đăng nhập an toàn thành công!",
+            "note": "Token được lưu trong HttpOnly Cookie. JavaScript không thể đọc được!",
+            "user_info": {"name": user['name'], "role": user['role']}
+        }))
+
+        response.set_cookie(
+            'access_token',
+            access,
+            httponly=True,    
+            secure=False,     
+            samesite='Lax',
+            max_age=15 * 60   
+        )
+        return response, 200
+
+    return jsonify({"error": "Tài khoản hoặc mật khẩu không chính xác."}), 401
+
+
+# API 8: Đăng xuất - Xóa Cookie
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    response = make_response(jsonify({"message": "Đăng xuất thành công. Cookie đã bị xóa."}))
+    response.delete_cookie('access_token')
+    return response, 200
+
+
 if __name__ == '__main__':
-    print("Khởi động Máy chủ API tại http://127.0.0.1:5000")
+    print("Starting API server at http://127.0.0.1:5000")
     app.run(debug=True, port=5000)
