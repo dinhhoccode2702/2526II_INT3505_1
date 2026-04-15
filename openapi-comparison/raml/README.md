@@ -1,114 +1,38 @@
-# 📘 RAML - Library API: Hướng dẫn sinh server Flask từ `.raml`
+# Hướng dẫn xử lý RAML (*.raml)
 
-Mục tiêu: từ `raml/library-api.raml` sinh ra một server stub (Flask) có thể chạy được, và đặt kết quả vào `out/raml/flask-server`.
+## 1. Công cụ & Thư viện hỗ trợ
+- **Osprey**: Chạy Mock Server trực tiếp từ file RAML (dành riêng cho Node.js).
+- **raml2html**: Render trực tiếp file `.raml` ra trang Website dạng HTML để dễ đọc tài liệu.
+- **oas-raml-converter**: Công cụ biên dịch từ RAML sang chuẩn OpenAPI.
 
-## Tổng quan luồng công việc
-- 1) Chuyển RAML → OpenAPI (RAML ít được OpenAPI Generator hỗ trợ trực tiếp).
-- 2) Dùng OpenAPI Generator để sinh server Python (Flask) từ OpenAPI kết quả.
+## 2. Quy trình sinh Server Backend
+Giống như API Blueprint, RAML ngày nay đã được hệ sinh thái Gen code hỗ trợ trực tiếp một cách mạnh mẽ. Giải pháp tối ưu nhất là **Biên dịch file RAML về chuẩn OpenAPI 3.0**.
 
----
-
-## Yêu cầu phần mềm (Windows PowerShell)
-- Node.js & npm
-- Java 11+ (nếu không dùng Docker)
-- (Tùy chọn) Docker
-
-## Công cụ sẽ dùng
-- `raml2openapi` (npx) — chuyển RAML → OpenAPI
-- `@openapitools/openapi-generator-cli` (npx hoặc Docker) — sinh server từ OpenAPI
-
----
-
-## 1) Chuyển `raml/library-api.raml` → `openapi/library-from-raml.yaml`
-
-Mở PowerShell tại thư mục repo root (`C:\Users\ADMIN\OneDrive\Desktop\KTHDV`) và chạy:
-
-```powershell
-# dùng npx (không cần cài global)
-npx raml2openapi raml/library-api.raml openapi/library-from-raml.yaml --pretty
-
-# nếu muốn cài global
-# npm install -g raml2openapi
-# raml2openapi raml/library-api.raml openapi/library-from-raml.yaml --pretty
+### Bước 1: Cài đặt bộ chuyển đổi (Yêu cầu Node.js)
+Cài đặt công cụ chuyển từ RAML về OpenAPI:
+```bash
+npm install -g oas-raml-converter
 ```
 
-Nếu thành công bạn sẽ thấy file `openapi/library-from-raml.yaml` được tạo.
+### Bước 2: Ép kiểu RAML sang OpenAPI 3.0
+Do công cụ này in trực tiếp kết quả ra màn hình (terminal), nên ta cần dùng dấu `>` để ghi đè kết quả đó vào file `openapi.yaml`.
 
----
-
-## 2) Sinh Flask server stub từ OpenAPI
-
-Hai cách: dùng `npx` (không cần Java) hoặc Docker image (không cần Java cục bộ).
-
-- Cách A (npx wrapper):
-
+Trên Terminal (Cmd/Bash):
+```bash
 ```powershell
-npx @openapitools/openapi-generator-cli generate -i openapi/library-from-raml.yaml -g python-flask -o out/raml/flask-server
+npx oas-raml-converter --from RAML --to OAS30 library-api.raml | Out-File -Encoding utf8 openapi.yaml
 ```
 
-- Cách B (Docker):
-
-```powershell
-docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openapi/library-from-raml.yaml -g python-flask -o /local/out/raml/flask-server
+### Bước 3: Sử dụng OpenAPI Generator để sinh code Server
+Một khi đã có file `openapi.yaml` trong tay, chạy trình Gen code tiêu chuẩn:
+```bash
+npx @openapitools/openapi-generator-cli generate -i openapi.yaml -g python-flask -o ./raml-backend
 ```
+npx @openapitools/openapi-generator-cli generate -i openapi.yaml -g python-flask -o ./raml-backend
 
-Sau khi chạy, thư mục `out/raml/flask-server` sẽ chứa scaffold server.
-
----
-
-## 3) Thiết lập môi trường Python và chạy server (PowerShell)
-
-```powershell
-cd out/raml/flask-server
-
-# tạo virtualenv
-python -m venv .venv
-
-# nếu PowerShell chặn script (chỉ lần đầu)
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-
-# activate venv
-. .\.venv\Scripts\Activate.ps1
-
-# cài dependencies (nếu generator có requirements.txt)
-if (Test-Path requirements.txt) { pip install -r requirements.txt } else { pip install flask }
-
-# chạy server: kiểm tra README trong folder sinh ra; thường thử:
+### Bước 4: Chạy server
+```bash
+cd raml-backend
+pip install -r requirements.txt
 python -m openapi_server
-
-# nếu không chạy được, mở out/raml/flask-server/README.md và làm theo hướng dẫn trong đó.
 ```
-
----
-
-## 4) Kiểm tra endpoint
-
-```powershell
-curl http://localhost:8080/books
-```
-
-Hoặc dùng Postman/Swagger UI trỏ tới `http://localhost:8080`.
-
----
-
-## 5) Troubleshooting nhanh
-
-- Nếu `npx raml2openapi` báo lỗi parse RAML: mở `raml/library-api.raml` và kiểm tra cú pháp YAML (indent, `types`, `uriParameters`).
-- Nếu OpenAPI Generator báo lỗi khi generate: validate OpenAPI bằng `swagger-cli`:
-
-```powershell
-npx @apidevtools/swagger-cli validate openapi/library-from-raml.yaml
-```
-- Nếu bạn không có Java: dùng Docker command (Cách B) để generate.
-- Nếu server không start: đọc `out/raml/flask-server/README.md` để biết entrypoint chính xác; tìm package tên `openapi_server` hoặc file `__main__.py`.
-
----
-
-## 6) Tùy biến sau khi sinh scaffold
-
-- Scaffold chỉ là stub — bạn cần implement logic trong handlers/controllers.
-- Thêm cấu hình `securitySchemes` vào OpenAPI nếu cần auth, hoặc tích hợp auth vào code sinh ra.
-
----
-
-Nếu bạn muốn, tôi có thể chạy các lệnh trên (convert + generate) ngay bây giờ và tạo `out/raml/flask-server` trong repo, rồi hướng dẫn bạn chạy cụ thể. Nói "Làm đi" để tôi bắt đầu.

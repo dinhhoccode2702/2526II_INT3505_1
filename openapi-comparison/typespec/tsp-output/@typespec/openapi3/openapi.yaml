@@ -148,5 +148,4 @@ components:
           type: string
 servers:
   - url: https://2526-ii-int-3505-1-4967.vercel.app/
-    description: server
     variables: {}

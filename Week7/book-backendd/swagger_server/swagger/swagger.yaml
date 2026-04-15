@@ -1,0 +1,241 @@
+openapi: 3.0.0
+info:
+  title: Book API
+  version: 1.0.0
+servers:
+- url: http://localhost:5000
+- url: http://2526-ii-int-3505-1-gpf3-2g8bjq0ny-dinhhoccodes-projects.vercel.app
+paths:
+  /api/v1/books:
+    get:
+      summary: Lấy danh sách sách
+      operationId: api_v1_books_get
+      responses:
+        "200":
+          description: Lấy danh sách sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookListResponse'
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+    post:
+      summary: Tạo sách mới
+      operationId: api_v1_books_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookRequest'
+        required: true
+      responses:
+        "201":
+          description: Tạo sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookResponse'
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+  /api/v1/books/search:
+    get:
+      summary: Tìm kiếm sách
+      operationId: api_v1_books_search_get
+      parameters:
+      - name: title
+        in: query
+        description: Tìm kiếm theo tiêu đề sách
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Tìm kiếm sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookListResponse'
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+  /api/v1/books/{book_id}:
+    get:
+      summary: Lấy thông tin sách theo id
+      operationId: api_v1_books_book_id_get
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Lấy thông tin sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookResponse'
+        "404":
+          description: không tìm thấy sách
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+    put:
+      summary: Cập nhật thông tin sách
+      operationId: api_v1_books_book_id_put
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookRequest'
+        required: true
+      responses:
+        "200":
+          description: Cập nhật thông tin sách thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookResponse'
+        "404":
+          description: không tìm thấy sách
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+    delete:
+      summary: Xóa sách
+      operationId: api_v1_books_book_id_delete
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "204":
+          description: Xóa sách thành công
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+    patch:
+      summary: Cập nhật một phần sách
+      operationId: api_v1_books_book_id_patch
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookResponse'
+        "404":
+          description: Không tìm thấy sách
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+components:
+  schemas:
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        author:
+          type: string
+        genre:
+          type: string
+        published_year:
+          type: integer
+        price:
+          type: number
+          format: float
+        is_available:
+          type: boolean
+      example:
+        published_year: 6
+        author: author
+        price: 1.4658129
+        genre: genre
+        id: 0
+        title: title
+        is_available: true
+    CreateBookRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        genre:
+          type: string
+        published_year:
+          type: integer
+        price:
+          type: number
+        is_available:
+          type: boolean
+    BookResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Book'
+        message:
+          type: string
+      example:
+        data:
+          published_year: 6
+          author: author
+          price: 1.4658129
+          genre: genre
+          id: 0
+          title: title
+          is_available: true
+        success: true
+        message: message
+    BookListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        message:
+          type: string
+      example:
+        data:
+        - published_year: 6
+          author: author
+          price: 1.4658129
+          genre: genre
+          id: 0
+          title: title
+          is_available: true
+        - published_year: 6
+          author: author
+          price: 1.4658129
+          genre: genre
+          id: 0
+          title: title
+          is_available: true
+        success: true
+        message: message
+

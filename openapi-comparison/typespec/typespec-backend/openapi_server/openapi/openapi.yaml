@@ -1,0 +1,178 @@
+openapi: 3.0.0
+info:
+  description: API quản lý sách đơn giản sử dụng Flask.
+  title: Library API
+  version: 1.0.0
+servers:
+- url: https://2526-ii-int-3505-1-4967.vercel.app/
+paths:
+  /books:
+    get:
+      operationId: books_get_books
+      parameters: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Book"
+                type: array
+          description: The request has succeeded.
+      summary: Lấy danh sách toàn bộ sách
+      x-openapi-router-controller: openapi_server.controllers.default_controller
+    post:
+      operationId: books_create_book
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewBook"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+          description: The request has succeeded and a new resource has been created
+            as a result.
+        "400":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: The server could not understand the request due to invalid
+            syntax.
+      summary: Thêm sách mới
+      x-openapi-router-controller: openapi_server.controllers.default_controller
+  /books/{id}:
+    delete:
+      operationId: books_delete_book
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+        style: simple
+      responses:
+        "204":
+          description: "There is no content to send for this request, but the headers\
+            \ may be useful. "
+        "404":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: The server cannot find the requested resource.
+      summary: Xóa sách
+      x-openapi-router-controller: openapi_server.controllers.default_controller
+    get:
+      operationId: books_get_book
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+          description: The request has succeeded.
+        "404":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: The server cannot find the requested resource.
+      summary: Lấy thông tin một cuốn sách
+      x-openapi-router-controller: openapi_server.controllers.default_controller
+    put:
+      operationId: books_update_book
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int32
+          type: integer
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewBook"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+          description: The request has succeeded.
+        "400":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: The server could not understand the request due to invalid
+            syntax.
+        "404":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: The server cannot find the requested resource.
+      summary: Cập nhật thông tin sách
+      x-openapi-router-controller: openapi_server.controllers.default_controller
+components:
+  schemas:
+    Book:
+      example:
+        author: author
+        id: 0
+        title: title
+      properties:
+        id:
+          format: int32
+          title: id
+          type: integer
+        title:
+          title: title
+          type: string
+        author:
+          title: author
+          type: string
+      required:
+      - author
+      - id
+      - title
+      title: Book
+      type: object
+    NewBook:
+      example:
+        author: author
+        title: title
+      properties:
+        title:
+          title: title
+          type: string
+        author:
+          title: author
+          type: string
+      required:
+      - author
+      - title
+      title: NewBook
+      type: object
