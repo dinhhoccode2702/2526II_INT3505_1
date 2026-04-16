@@ -1,0 +1,16 @@
+{
+	"id": "4b8e31af-8fd7-47d2-8d9b-a385dd4b40ff",
+	"name": "Local_Test",
+	"values": [
+		{
+			"key": "latest_user_id",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		}
+	],
+	"color": null,
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2026-04-16T06:30:10.314Z",
+	"_postman_exported_using": "Postman/11.87.2"
+}

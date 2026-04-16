@@ -1,0 +1,291 @@
+{
+  "info": {
+    "_postman_id": "35666cc8-4100-45bc-9462-1fad4546bf7e",
+    "name": "Test",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "48683753",
+    "_collection_link": "https://go.postman.co/collection/48683753-35666cc8-4100-45bc-9462-1fad4546bf7e?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Get data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code là 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Đúng User ID\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.user_id).to.eql(100);",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "packages": {},
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiQURNSU4iLCJleHAiOjE3NzUwMjkyMjJ9.BCQt-O0ZqF79NCT4FFOtHp9nyCoJ_eBjf1RvYyf0bOA",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\"user_id\": 100,\r\n\"name\": \"Integration Test\",\r\n\"email\": \"inter@uet.vnu.edu.vn\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:5000/api/users/100",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "users",
+            "100"
+          ]
+        },
+        "description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/health",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// 1. Kiểm tra Status Code phải là 200\r",
+              "pm.test(\"Server đang hoạt động (200 OK)\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "// 2. Kiểm tra nội dung trả về có chữ 'healthy'\r",
+              "pm.test(\"Trạng thái trả về là healthy\", function () {\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.expect(jsonData.status).to.eql(\"healthy\");\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/health",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/users",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// 1. Kiểm tra đã tạo thành công (201 Created)\r",
+              "pm.test(\"Tạo User thành công (201)\", function () {\r",
+              "    pm.response.to.have.status(201);\r",
+              "});\r",
+              "\r",
+              "// 2. LẤY ID VÀ LƯU VÀO BIẾN (Đây là phần quan trọng nhất)\r",
+              "var jsonData = pm.response.json();\r",
+              "if (jsonData.user_id) {\r",
+              "    pm.environment.set(\"latest_user_id\", jsonData.user_id);\r",
+              "    console.log(\"Đã lưu ID mới: \" + jsonData.user_id);\r",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Tự tạo số ngẫu nhiên cực lớn để tránh trùng\r",
+              "var randomId = Math.floor(Math.random() * 1000000);\r",
+              "pm.variables.set(\"dynamic_user_id\", randomId);\r",
+              "\r",
+              "// Tự tạo email ngẫu nhiên\r",
+              "var randomEmail = \"user\" + randomId + \"@gmail.com\";\r",
+              "pm.variables.set(\"dynamic_email\", randomEmail);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"user_id\": {{dynamic_user_id}},\r\n    \"name\": \"User Test\",\r\n    \"email\": \"{{dynamic_email}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/users",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "users"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/users/lastest_user_id",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// 1. Kiểm tra tìm thấy User (200 OK)\r",
+              "pm.test(\"Tìm thấy User vừa tạo (200)\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "// 2. Kiểm tra xem ID trả về có khớp với ID đã lưu không\r",
+              "pm.test(\"ID trả về khớp với ID trong biến môi trường\", function () {\r",
+              "    var jsonData = pm.response.json();\r",
+              "    var savedId = pm.environment.get(\"latest_user_id\");\r",
+              "    pm.expect(jsonData.user_id).to.eql(savedId);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://127.0.0.1:5000/api/users/{{latest_user_id}}",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "users",
+            "{{latest_user_id}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://127.0.0.1:5000/api/heavy-calculation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Tốc độ phản hồi phải nhanh (< 200ms)\", function () {\r",
+              "    // Kiểm tra thời gian phản hồi thực tế của Server\r",
+              "    pm.expect(pm.response.responseTime).to.be.below(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"Status code là 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://127.0.0.1:5000/api/heavy-calculation",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "heavy-calculation"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

@@ -65,44 +65,40 @@ def get_user(user_id):
         }), 200
     return jsonify({"error": "Không tìm thấy user"}), 404
 
+# --- ENDPOINT 4: Thanh toán giỏ hàng ---
 @app.route('/api/cart/checkout', methods=['POST'])
 def checkout():
     data = request.get_json()
-    if not data or 'items' not in data:
-        return jsonify({"error": "Không có items trong giỏ"}), 400
-        
-    total = 0
-    for item in data['items']:
-        if 'price' not in item or 'quantity' not in item:
-            return jsonify({"error": "Sai định dạng item"}), 400
-        total += item['price'] * item['quantity']
-        
-    if total > 5000:
-        return jsonify({"error": "Vượt quá hạn mức thanh toán"}), 403
-        
+    items = data.get('items', [])
+    
+    # Tính tổng tiền: sum(price * quantity)
+    total_amount = sum(item.get('price', 0) * item.get('quantity', 0) for item in items)
+    
+    # Logic nghiệp vụ: Hạn mức 5000
+    if total_amount > 5000:
+        return jsonify({
+            "status": "error",
+            "message": f"Vượt quá hạn mức thanh toán (Total: {total_amount})"
+        }), 403 # Forbidden
+    
     return jsonify({
-        "status": "success", 
-        "total_paid": total, 
-        "receipt": "REC-" + str(int(time.time()))
+        "status": "success",
+        "total_paid": total_amount
     }), 200
 
+# --- ENDPOINT 5: Tính toán nặng (Giả lập hiệu năng) ---
 @app.route('/api/heavy-calculation', methods=['GET'])
-def heavy_calculation():
-    n = request.args.get('n', default=1000, type=int)
-    if n > 50000: n = 50000
-        
-    primes = []
-    for num in range(2, n + 1):
-        is_prime = True
-        for i in range(2, int(math.sqrt(num)) + 1):
-            if num % i == 0:
-                is_prime = False
-                break
-        if is_prime: primes.append(num)
-            
+def heavy_calc():
+    n = int(request.args.get('n', 1000))
+    start_time = time.time()
+    
+    # Giả lập một vòng lặp tốn tài nguyên
+    result = sum(i * i for i in range(n))
+    
+    end_time = time.time()
     return jsonify({
-        "status": "completed",
-        "items_found": len(primes)
+        "result": result,
+        "execution_time_ms": (end_time - start_time) * 1000
     }), 200
 
 if __name__ == '__main__':
