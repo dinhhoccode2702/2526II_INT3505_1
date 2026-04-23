@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -41,10 +41,37 @@ def get_products_v2():
     }), 200
 
 
+# ==========================================
+# HEADER VERSIONING: Chung URL, định tuyến theo Header
+# ==========================================
+@app.route('/api/products', methods=['GET'])
+def get_products_by_header():
+    """
+    Header Versioning: Đọc header 'Accept-Version' để quyết định format response.
+    Mặc định (nếu không truyền) sẽ trả về v1.
+    """
+    version = request.headers.get('Accept-Version', '1')
+    
+    if version == '2':
+        return jsonify({
+            "version": "v2",
+            "message": "Da nhan Header Version 2 (Chi tiet)",
+            "data": PRODUCTS_DB
+        }), 200
+    else:
+        v1_data = [{"id": p["id"], "name": p["name"]} for p in PRODUCTS_DB]
+        return jsonify({
+            "version": "v1",
+            "message": "Da nhan Header Version 1 hoac mac dinh (Co ban)",
+            "data": v1_data
+        }), 200
+
+
 if __name__ == '__main__':
     print("=" * 50)
     print("[SERVER] Dang khoi chay Server Versioning Demo")
-    print("-> API v1 (Chi Ten): http://localhost:5000/api/v1/products")
-    print("-> API v2 (Co Gia):  http://localhost:5000/api/v2/products")
+    print("-> URL Versioning v1 : http://localhost:5000/api/v1/products")
+    print("-> URL Versioning v2 : http://localhost:5000/api/v2/products")
+    print("-> Header Versioning : http://localhost:5000/api/products (Can truyen Accept-Version: 1 hoac 2)")
     print("=" * 50)
     app.run(debug=True, port=5000)
