@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: Payment API
+  description: API xử lý thanh toán cơ bản (Version 1).
+  version: 1.0.0
+servers:
+  - url: https://api.yoursystem.com/v1
+    description: Production server
+  - url: https://sandbox.yoursystem.com/v1
+    description: Sandbox/Test server
+
+paths:
+  /payments:
+    post:
+      summary: Tạo một giao dịch thanh toán mới
+      description: Nhận thông tin thanh toán từ client và tiến hành xử lý trừ tiền.
+      operationId: createPayment
+      tags:
+        - Payments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequestV1'
+      responses:
+        '201':
+          description: Giao dịch được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponseV1'
+        '400':
+          description: Dữ liệu đầu vào không hợp lệ
+        '401':
+          description: Lỗi xác thực (Authentication)
+        '500':
+          description: Lỗi hệ thống nội bộ
+
+  /payments/{payment_id}:
+    get:
+      summary: Lấy thông tin một giao dịch thanh toán
+      description: Tra cứu trạng thái của một giao dịch thông qua ID.
+      operationId: getPaymentById
+      tags:
+        - Payments
+      parameters:
+        - name: payment_id
+          in: path
+          required: true
+          description: ID của giao dịch thanh toán
+          schema:
+            type: string
+            example: "pay_12345abcde"
+      responses:
+        '200':
+          description: Thông tin chi tiết của giao dịch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponseV1'
+        '404':
+          description: Không tìm thấy giao dịch
+
+components:
+  schemas:
+    PaymentRequestV1:
+      type: object
+      required:
+        - amount
+        - currency
+        - payment_method_id
+      properties:
+        amount:
+          type: number
+          format: double
+          description: Số tiền cần thanh toán
+          example: 150.50
+        currency:
+          type: string
+          description: Mã tiền tệ (chuẩn ISO 4217, VD USD, VND)
+          example: "USD"
+        payment_method_id:
+          type: string
+          description: ID của phương thức thanh toán (thẻ, ví) đã được lưu trước đó
+          example: "pm_card_visa"
+        description:
+          type: string
+          description: Mô tả nội dung thanh toán
+          example: "Thanh toán đơn hàng #999"
+
+    PaymentResponseV1:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID duy nhất của giao dịch thanh toán
+          example: "pay_12345abcde"
+        amount:
+          type: number
+          format: double
+          example: 150.50
+        currency:
+          type: string
+          example: "USD"
+        status:
+          type: string
+          description: Trạng thái của giao dịch
+          enum: [pending, succeeded, failed, refunded]
+          example: "succeeded"
+        created_at:
+          type: string
+          format: date-time
+          description: Thời gian tạo giao dịch
+          example: "2026-04-23T08:30:00Z"
+        description:
+          type: string
+          example: "Thanh toán đơn hàng #999"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - ApiKeyAuth: []
