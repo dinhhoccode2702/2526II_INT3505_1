@@ -83,12 +83,46 @@ def get_products_by_header():
         data = [adapter_v1(p) for p in db_data] # Adapter 1
         return jsonify({"version": "v1", "data": data}), 200
 
+# ==========================================
+# USERS VERSIONING DEMO (v1 -> v2)
+# ==========================================
+USERS_DB = [
+    {"id": 1, "first_name": "Nguyen", "last_name": "Van A", "age": 25},
+    {"id": 2, "first_name": "Tran", "last_name": "Thi B", "age": 30}
+]
+
+@app.route('/api/v1/users', methods=['GET'])
+def get_users_v1():
+    """
+    API Users v1: Trả về fullname gộp chung.
+    """
+    data = [
+        {
+            "id": u["id"], 
+            "fullname": f'{u["first_name"]} {u["last_name"]}', 
+            "age": u["age"]
+        } 
+        for u in USERS_DB
+    ]
+    return jsonify({"version": "v1", "data": data}), 200
+
+@app.route('/api/v2/users', methods=['GET'])
+def get_users_v2():
+    """
+    API Users v2: Trả về first_name và last_name tách biệt (Breaking Change từ v1).
+    """
+    return jsonify({"version": "v2", "data": USERS_DB}), 200
+
 
 if __name__ == '__main__':
     print("=" * 50)
     print("[SERVER] Dang khoi chay Server Versioning Demo")
+    print("\n--- PRODUCTS API ---")
     print("-> URL Versioning v1 : http://localhost:5000/api/v1/products")
     print("-> URL Versioning v2 : http://localhost:5000/api/v2/products")
     print("-> Header Versioning : http://localhost:5000/api/products (Can truyen Accept-Version: 1 hoac 2)")
+    print("\n--- USERS API (Versioning v1 -> v2) ---")
+    print("-> URL Versioning v1 : http://localhost:5000/api/v1/users (Tra ve fullname)")
+    print("-> URL Versioning v2 : http://localhost:5000/api/v2/users (Tra ve first_name, last_name)")
     print("=" * 50)
     app.run(debug=True, port=5000)
