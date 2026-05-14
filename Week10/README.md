@@ -26,6 +26,12 @@ Giai đoạn này tập trung vào việc xây dựng một Base API bằng Flas
     - **Rule nghiêm ngặt**: Áp dụng cho `/api/login` - chỉ cho phép 5 lần thử / 15 phút để chống Brute-force.
     - **Custom Error**: Khi vượt quá giới hạn, API sẽ trả về HTTP `429 Too Many Requests` và ghi log cảnh báo.
 
+4.  **Circuit Breaker (Chống treo hệ thống)**:
+    - Sử dụng thư viện `circuitbreaker` để bảo vệ ứng dụng khi API bên thứ 3 (Payment Gateway) gặp sự cố.
+    - **Cơ chế**: Nếu gọi API bên ngoài lỗi 5 lần liên tiếp, mạch sẽ **Mở (Open)**.
+    - Khi mạch Mở: Mọi request tiếp theo sẽ bị từ chối ngay lập tức (trả về fallback data) mà không cần chờ timeout, giúp giải phóng tài nguyên hệ thống.
+    - Sau 30 giây, mạch sẽ chuyển sang **Half-Open** để thử gọi lại API bên ngoài.
+
 ## Hướng dẫn chạy
 
 1.  Cài đặt thư viện:
@@ -57,6 +63,24 @@ for /l %i in (1,1,6) do curl -X POST http://127.0.0.1:5000/api/login -H "Content
 
 ### Quan sát kết quả trong Log
 Sau khi bị chặn, hãy mở file `app.log`. Bạn sẽ thấy một dòng log dạng JSON với nội dung `"message": "Rate limit exceeded"`, đây là bằng chứng hệ thống đã tự bảo vệ thành công.
+
+## Hướng dẫn Test Circuit Breaker
+
+### Bước 1: Gọi API khi Gateway đang hoạt động (Bình thường)
+Gửi request `POST` đến `http://127.0.0.1:5000/api/payment`. Bạn sẽ nhận được `status: success`.
+
+### Bước 2: Giả lập Gateway bị sập (Admin Action)
+Gửi request `POST` đến `http://127.0.0.1:5000/api/admin/toggle-gateway`. 
+Kết quả trả về sẽ là `gateway_status: DOWN`.
+
+### Bước 3: Kích hoạt ngắt mạch (Tripping the Circuit)
+1. Gửi request `POST` đến `http://127.0.0.1:5000/api/payment` liên tục.
+2. 5 lần đầu: Bạn sẽ phải chờ 2 giây (giả lập timeout) và nhận lỗi `500`.
+3. Từ lần thứ 6: Bạn sẽ nhận được phản hồi **ngay lập tức** (không chờ 2s) với mã lỗi `503` và message `"Hệ thống thanh toán đang bảo trì (Circuit Open)"`. 
+4. Lúc này mạch đã **Mở (Open)** để bảo vệ server của bạn không bị treo tài nguyên.
+
+### Bước 4: Chờ phục hồi (Half-Open)
+Chờ 30 giây, sau đó gửi lại request. Mạch sẽ thử gọi lại Gateway một lần nữa.
 
 ## Tại sao Log JSON lại quan trọng?
 Các hệ thống quản lý log hiện đại như **ELK Stack (Elasticsearch, Logstash, Kibana)**, **Datadog**, hoặc **CloudWatch** có thể dễ dàng parse log JSON để phân tích, vẽ biểu đồ và thiết lập cảnh báo tự động mà không cần dùng các Regex phức tạp.

@@ -2,7 +2,10 @@ from flask import Flask, jsonify, request
 from logger_config import logger
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from circuitbreaker import circuit, CircuitBreakerError
 import traceback
+import time
+import random
 
 app = Flask(__name__)
 
@@ -13,6 +16,22 @@ limiter = Limiter(
     default_limits=["100 per 15 minutes"],
     storage_uri="memory://",
 )
+
+# Global flag to simulate 3rd party API status
+PAYMENT_GATEWAY_UP = True
+
+# --- Circuit Breaker Logic ---
+# Cấu hình: failure_threshold=5 (lỗi 5 lần liên tiếp sẽ ngắt mạch)
+# recovery_timeout=30 (sau 30s sẽ thử lại - Half-Open)
+@circuit(failure_threshold=5, recovery_timeout=30)
+def call_external_payment_gateway():
+    if not PAYMENT_GATEWAY_UP:
+        # Giả lập timeout hoặc lỗi kết nối
+        time.sleep(2)  # Giả lập chờ đợi
+        raise Exception("Payment Gateway is Down (Timeout Simulation)")
+    
+    # Giả lập thành công
+    return {"status": "success", "transaction_id": random.randint(1000, 9999)}
 
 # Mock data
 users = [
@@ -42,7 +61,6 @@ def login():
         })
         return jsonify({"error": "Missing username or password"}), 400
 
-    # Mock logic
     if username == "admin" and password == "secure_password":
         logger.info(f"Successful login for user: {username}", extra={"user": username})
         return jsonify({"message": "Login successful", "token": "mock-jwt-token"}), 200
@@ -53,18 +71,57 @@ def login():
         })
         return jsonify({"error": "Invalid credentials"}), 401
 
-@app.route('/api/error', methods=['GET'])
-def trigger_error():
-    """Endpoint to test error logging"""
+# --- Payment Endpoint with Circuit Breaker ---
+@app.route('/api/payment', methods=['POST'])
+def process_payment():
+    data = request.get_json()
+    
+    # 1. Kiểm tra payload (Validation)
+    if not data or 'amount' not in data:
+        logger.warning("Payment request missing amount", extra={"payload": data})
+        return jsonify({"error": "Missing amount in payload"}), 400
+    
+    amount = data.get('amount')
+    if not isinstance(amount, (int, float)) or amount <= 0:
+        return jsonify({"error": "Invalid amount", "value": amount}), 400
+
     try:
-        # Simulate a crash
-        result = 1 / 0
+        logger.info(f"Initiating payment request of {amount} to external gateway")
+        
+        # 2. Giả lập Gateway lỗi nếu amount là một số đặc biệt (ví dụ 999)
+        if amount == 999:
+            # Gọi hàm giả lập lỗi được bọc bởi circuit breaker
+            return call_faulty_gateway()
+            
+        result = call_external_payment_gateway()
+        return jsonify(result), 200
+    except CircuitBreakerError:
+        # Mạch đang mở (Open)
+        logger.error("Circuit Breaker is OPEN! Blocking requests to Payment Gateway.")
+        return jsonify({
+            "status": "error",
+            "message": "Hệ thống thanh toán đang bảo trì (Circuit Open). Vui lòng thử lại sau.",
+            "fallback": True
+        }), 503
     except Exception as e:
-        logger.error("A critical error occurred in /api/error", extra={
-            "exception": str(e),
-            "stacktrace": traceback.format_exc()
-        })
-        return jsonify({"error": "Internal Server Error"}), 500
+        # Lỗi từ gateway
+        logger.warning(f"Payment Gateway call failed: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@circuit(failure_threshold=5, recovery_timeout=30)
+def call_faulty_gateway():
+    """Hàm luôn trả về lỗi để test Circuit Breaker nhanh"""
+    time.sleep(1)
+    raise Exception("Critical Gateway Error (Simulated)")
+
+# --- Admin Endpoint to toggle Gateway status (For Testing) ---
+@app.route('/api/admin/toggle-gateway', methods=['POST'])
+def toggle_gateway():
+    global PAYMENT_GATEWAY_UP
+    PAYMENT_GATEWAY_UP = not PAYMENT_GATEWAY_UP
+    status = "UP" if PAYMENT_GATEWAY_UP else "DOWN"
+    logger.info(f"Admin toggled Payment Gateway status to: {status}")
+    return jsonify({"gateway_status": status}), 200
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
@@ -80,5 +137,5 @@ def ratelimit_handler(e):
     }), 429
 
 if __name__ == '__main__':
-    logger.info("Starting Flask Server on port 5000 with Rate Limiting")
+    logger.info("Starting Flask Server on port 5000 with Circuit Breaker")
     app.run(debug=True, port=5000)

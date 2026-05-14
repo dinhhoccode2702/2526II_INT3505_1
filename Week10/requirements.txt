@@ -2,3 +2,4 @@ flask
 python-json-logger
 flask-cors
 flask-limiter
+circuitbreaker
