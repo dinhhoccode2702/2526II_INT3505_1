@@ -32,6 +32,14 @@ Giai đoạn này tập trung vào việc xây dựng một Base API bằng Flas
     - Khi mạch Mở: Mọi request tiếp theo sẽ bị từ chối ngay lập tức (trả về fallback data) mà không cần chờ timeout, giúp giải phóng tài nguyên hệ thống.
     - Sau 30 giây, mạch sẽ chuyển sang **Half-Open** để thử gọi lại API bên ngoài.
 
+5.  **Monitoring (Giám sát hệ thống)**:
+    - Sử dụng `prometheus-flask-exporter` để xuất dữ liệu metrics.
+    - **Endpoint `/metrics`**: Cung cấp dữ liệu về:
+        - Số lượng HTTP Request (theo method, status code, path).
+        - Thời gian phản hồi của API (Response time).
+        - Thông tin hệ thống (CPU, RAM usage).
+    - Dữ liệu này tuân thủ chuẩn Prometheus, có thể dùng để tích hợp vào các hệ thống giám sát.
+
 ## Hướng dẫn chạy
 
 1.  Cài đặt thư viện:
@@ -81,6 +89,37 @@ Kết quả trả về sẽ là `gateway_status: DOWN`.
 
 ### Bước 4: Chờ phục hồi (Half-Open)
 Chờ 30 giây, sau đó gửi lại request. Mạch sẽ thử gọi lại Gateway một lần nữa.
+
+## Hướng dẫn xem Metrics
+
+### Bước 1: Truy cập endpoint metrics
+Mở trình duyệt và truy cập: `http://127.0.0.1:5000/metrics`
+
+### Bước 2: Đọc dữ liệu
+Bạn sẽ thấy một danh sách dài các text. Đây là định dạng chuẩn của Prometheus. Hãy tìm các dòng quan trọng:
+- `flask_http_request_total`: Tổng số request đã gửi đến API.
+- `flask_http_request_duration_seconds`: Thời gian xử lý request.
+- `process_virtual_memory_bytes`: Lượng RAM ứng dụng đang sử dụng.
+
+> [!TIP]
+> **Giải đáp về Grafana/Docker**: Bạn **KHÔNG BẮT BUỘC** phải dùng Grafana hay Docker. Endpoint `/metrics` xuất dữ liệu chuẩn Prometheus dưới dạng text. Bạn có thể xem trực tiếp bằng trình duyệt để kiểm tra thông số hệ thống. Grafana chỉ cần khi bạn muốn vẽ biểu đồ trực quan.
+
+## Hướng dẫn Test JWT Authentication
+
+### Bước 1: Đăng nhập để lấy Token
+Gửi `POST` đến `/api/login` với thông tin:
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+Bạn sẽ nhận được một chuỗi `token` dài (JWT).
+
+### Bước 2: Truy cập Endpoint bảo mật
+Gửi `GET` đến `/api/profile`.
+- **Nếu không có token**: Bạn nhận lỗi `401 Unauthorized`.
+- **Nếu có token**: Thêm Header `Authorization: Bearer <token_cua_ban>`. Bạn sẽ nhận được thông tin cá nhân.
 
 ## Tại sao Log JSON lại quan trọng?
 Các hệ thống quản lý log hiện đại như **ELK Stack (Elasticsearch, Logstash, Kibana)**, **Datadog**, hoặc **CloudWatch** có thể dễ dàng parse log JSON để phân tích, vẽ biểu đồ và thiết lập cảnh báo tự động mà không cần dùng các Regex phức tạp.

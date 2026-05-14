@@ -3,12 +3,26 @@ from logger_config import logger, audit_logger
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from circuitbreaker import circuit, CircuitBreakerError
+from prometheus_flask_exporter import PrometheusMetrics
 import traceback
 import time
 import random
 import copy
+import jwt
+import datetime
+from functools import wraps
 
 app = Flask(__name__)
+
+# Setup Prometheus Metrics
+metrics = PrometheusMetrics(app, group_by='endpoint')
+metrics.info('app_info', 'Application info', version='1.0.0')
+
+# Thủ công đăng ký route /metrics để tránh lỗi 404
+@app.route('/metrics')
+def metrics_endpoint():
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 # Setup Rate Limiter
 limiter = Limiter(
@@ -81,6 +95,32 @@ def get_users():
     logger.info("Fetching all users", extra={"path": request.path, "method": request.method})
     return jsonify(safe_users), 200
 
+# Secret key để mã hóa JWT (Trong thực tế nên để ở biến môi trường)
+app.config['SECRET_KEY'] = 'your-super-secret-key-123'
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        # Token thường được gửi trong header 'Authorization: Bearer <token>'
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            if auth_header.startswith('Bearer '):
+                token = auth_header.split(" ")[1]
+
+        if not token:
+            return jsonify({'error': 'Token is missing!'}), 401
+
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = next((u for u in USERS_DB if u['username'] == data['user']), None)
+        except Exception as e:
+            logger.warning(f"Invalid token attempt: {str(e)}")
+            return jsonify({'error': 'Token is invalid or expired!'}), 401
+
+        return f(current_user, *args, **kwargs)
+    return decorated
+
 @app.route('/api/login', methods=['POST'])
 @limiter.limit("5 per 15 minutes")
 def login():
@@ -102,6 +142,13 @@ def login():
     user = next((u for u in USERS_DB if u['username'] == username), None)
 
     if user and user['password'] == password:
+        # Tạo JWT Token
+        token = jwt.encode({
+            'user': user['username'],
+            'role': user['role'],
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        }, app.config['SECRET_KEY'], algorithm="HS256")
+
         logger.info(f"Successful login for user: {username}", extra={"user": username, "role": user['role']})
         return jsonify({
             "message": "Login successful",
@@ -110,7 +157,7 @@ def login():
                 "username": user['username'],
                 "role": user['role']
             },
-            "token": f"mock-jwt-token-for-{username}"
+            "token": token
         }), 200
     else:
         logger.warning(f"Failed login attempt for user: {username}", extra={
@@ -118,6 +165,16 @@ def login():
             "ip": request.remote_addr
         })
         return jsonify({"error": "Invalid credentials"}), 401
+
+@app.route('/api/profile', methods=['GET'])
+@token_required
+def get_profile(current_user):
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Trả về thông tin profile của user hiện tại
+    profile_data = {k: v for k, v in current_user.items() if k != 'password'}
+    return jsonify(profile_data), 200
 
 # --- Payment Endpoint with Circuit Breaker ---
 @app.route('/api/payment', methods=['POST'])
