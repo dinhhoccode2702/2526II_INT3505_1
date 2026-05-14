@@ -1,8 +1,18 @@
 from flask import Flask, jsonify, request
 from logger_config import logger
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import traceback
 
 app = Flask(__name__)
+
+# Setup Rate Limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["100 per 15 minutes"],
+    storage_uri="memory://",
+)
 
 # Mock data
 users = [
@@ -16,8 +26,12 @@ def get_users():
     return jsonify(users), 200
 
 @app.route('/api/login', methods=['POST'])
+@limiter.limit("5 per 15 minutes")
 def login():
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+        
     username = data.get('username')
     password = data.get('password')
 
@@ -33,7 +47,7 @@ def login():
         logger.info(f"Successful login for user: {username}", extra={"user": username})
         return jsonify({"message": "Login successful", "token": "mock-jwt-token"}), 200
     else:
-        logger.warn(f"Failed login attempt for user: {username}", extra={
+        logger.warning(f"Failed login attempt for user: {username}", extra={
             "username": username,
             "ip": request.remote_addr
         })
@@ -52,6 +66,19 @@ def trigger_error():
         })
         return jsonify({"error": "Internal Server Error"}), 500
 
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    logger.warning("Rate limit exceeded", extra={
+        "ip": request.remote_addr,
+        "path": request.path,
+        "description": str(e.description)
+    })
+    return jsonify({
+        "error": "Too Many Requests",
+        "message": "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau 15 phút.",
+        "description": e.description
+    }), 429
+
 if __name__ == '__main__':
-    logger.info("Starting Flask Server on port 5000")
+    logger.info("Starting Flask Server on port 5000 with Rate Limiting")
     app.run(debug=True, port=5000)

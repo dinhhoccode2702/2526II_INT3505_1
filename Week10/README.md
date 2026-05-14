@@ -20,6 +20,12 @@ Giai đoạn này tập trung vào việc xây dựng một Base API bằng Flas
         - **app.log**: Lưu trữ tất cả các log từ mức INFO trở lên.
         - **error.log**: Chỉ lưu trữ các log mức ERROR (giúp DevOps dễ dàng filter lỗi).
 
+3.  **Rate Limiting (Bảo vệ API)**:
+    - Sử dụng `Flask-Limiter` để ngăn chặn spam và Brute-force attacks.
+    - **Rule cơ bản**: Giới hạn 100 requests / 15 phút cho mỗi IP (áp dụng toàn hệ thống).
+    - **Rule nghiêm ngặt**: Áp dụng cho `/api/login` - chỉ cho phép 5 lần thử / 15 phút để chống Brute-force.
+    - **Custom Error**: Khi vượt quá giới hạn, API sẽ trả về HTTP `429 Too Many Requests` và ghi log cảnh báo.
+
 ## Hướng dẫn chạy
 
 1.  Cài đặt thư viện:
@@ -33,6 +39,24 @@ Giai đoạn này tập trung vào việc xây dựng một Base API bằng Flas
     ```
 
 3.  Kiểm tra file `app.log` và `error.log` được tạo ra trong thư mục `Week10`.
+
+## Hướng dẫn Test Rate Limiting
+
+### Cách 1: Sử dụng Postman (Thủ công)
+1.  Mở Postman, tạo request `POST` đến `http://127.0.0.1:5000/api/login`.
+2.  Trong phần **Body**, chọn `raw` và `JSON`, nhập: `{"username": "admin", "password": "wrong_password"}`.
+3.  Nhấn **Send** liên tục 6 lần.
+4.  Ở lần thứ 6, bạn sẽ nhận được mã lỗi `429 Too Many Requests`.
+
+### Cách 2: Sử dụng Command Line (Nhanh)
+Nếu bạn có `curl` (Windows/Linux/Mac), hãy chạy lệnh sau để gửi 6 request liên tục:
+```bash
+for /l %i in (1,1,6) do curl -X POST http://127.0.0.1:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"admin\", \"password\":\"123\"}"
+```
+*(Lưu ý: Nếu dùng Bash/Linux thì thay bằng: `for i in {1..6}; do curl ...; done`)*
+
+### Quan sát kết quả trong Log
+Sau khi bị chặn, hãy mở file `app.log`. Bạn sẽ thấy một dòng log dạng JSON với nội dung `"message": "Rate limit exceeded"`, đây là bằng chứng hệ thống đã tự bảo vệ thành công.
 
 ## Tại sao Log JSON lại quan trọng?
 Các hệ thống quản lý log hiện đại như **ELK Stack (Elasticsearch, Logstash, Kibana)**, **Datadog**, hoặc **CloudWatch** có thể dễ dàng parse log JSON để phân tích, vẽ biểu đồ và thiết lập cảnh báo tự động mà không cần dùng các Regex phức tạp.
