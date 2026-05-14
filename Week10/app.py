@@ -1,11 +1,12 @@
 from flask import Flask, jsonify, request
-from logger_config import logger
+from logger_config import logger, audit_logger
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from circuitbreaker import circuit, CircuitBreakerError
 import traceback
 import time
 import random
+import copy
 
 app = Flask(__name__)
 
@@ -17,8 +18,40 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
+# --- Audit Logging Middleware ---
+SENSITIVE_FIELDS = ['password', 'token', 'secret', 'card_number']
+
+def mask_sensitive_data(data):
+    """Ẩn các thông tin nhạy cảm trong payload"""
+    if not isinstance(data, dict):
+        return data
+    masked_data = copy.deepcopy(data)
+    for field in SENSITIVE_FIELDS:
+        if field in masked_data:
+            masked_data[field] = "********"
+    return masked_data
+
+@app.before_request
+def audit_log_middleware():
+    # Chỉ ghi audit log cho các hành động thay đổi dữ liệu (POST, PUT, DELETE, PATCH)
+    if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
+        payload = request.get_json(silent=True) or {}
+        masked_payload = mask_sensitive_data(payload)
+        
+        # Giả lập lấy UserID từ Header (nếu có)
+        user_id = request.headers.get('X-User-ID', 'Anonymous')
+        
+        audit_logger.info("Audit Action", extra={
+            "user_id": user_id,
+            "method": request.method,
+            "path": request.path,
+            "ip": request.remote_addr,
+            "payload": masked_payload
+        })
+
 # Global flag to simulate 3rd party API status
 PAYMENT_GATEWAY_UP = True
+# ... (rest of the code)
 
 # --- Circuit Breaker Logic ---
 # Cấu hình: failure_threshold=5 (lỗi 5 lần liên tiếp sẽ ngắt mạch)
@@ -33,16 +66,20 @@ def call_external_payment_gateway():
     # Giả lập thành công
     return {"status": "success", "transaction_id": random.randint(1000, 9999)}
 
-# Mock data
-users = [
-    {"id": 1, "username": "admin", "role": "admin"},
-    {"id": 2, "username": "devops_engineer", "role": "user"}
+# Mock Database
+USERS_DB = [
+    {"id": 1, "username": "admin", "password": "admin123", "role": "admin"},
+    {"id": 2, "username": "dev_user", "password": "dev123", "role": "developer"},
+    {"id": 3, "username": "manager", "password": "manager123", "role": "manager"},
+    {"id": 4, "username": "support", "password": "support123", "role": "support"}
 ]
 
 @app.route('/api/users', methods=['GET'])
 def get_users():
+    # Không trả về password trong danh sách user
+    safe_users = [{k: v for k, v in u.items() if k != 'password'} for u in USERS_DB]
     logger.info("Fetching all users", extra={"path": request.path, "method": request.method})
-    return jsonify(users), 200
+    return jsonify(safe_users), 200
 
 @app.route('/api/login', methods=['POST'])
 @limiter.limit("5 per 15 minutes")
@@ -61,9 +98,20 @@ def login():
         })
         return jsonify({"error": "Missing username or password"}), 400
 
-    if username == "admin" and password == "secure_password":
-        logger.info(f"Successful login for user: {username}", extra={"user": username})
-        return jsonify({"message": "Login successful", "token": "mock-jwt-token"}), 200
+    # Tìm user trong "Database"
+    user = next((u for u in USERS_DB if u['username'] == username), None)
+
+    if user and user['password'] == password:
+        logger.info(f"Successful login for user: {username}", extra={"user": username, "role": user['role']})
+        return jsonify({
+            "message": "Login successful",
+            "user": {
+                "id": user['id'],
+                "username": user['username'],
+                "role": user['role']
+            },
+            "token": f"mock-jwt-token-for-{username}"
+        }), 200
     else:
         logger.warning(f"Failed login attempt for user: {username}", extra={
             "username": username,

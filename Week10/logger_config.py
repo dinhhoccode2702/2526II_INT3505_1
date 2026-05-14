@@ -33,13 +33,18 @@ def setup_logging():
     app_log_handler.setLevel(logging.INFO)
     logger.addHandler(app_log_handler)
 
-    # File Transport: error.log (only ERROR logs)
-    error_log_handler = logging.FileHandler("error.log")
-    error_log_handler.setFormatter(formatter)
-    error_log_handler.setLevel(logging.ERROR)
-    logger.addHandler(error_log_handler)
+    # File Transport: audit.log (Only for audit events)
+    audit_log_handler = logging.FileHandler("audit.log")
+    audit_log_handler.setFormatter(formatter)
+    audit_log_handler.setLevel(logging.INFO)
+    
+    # We can either add it to the main logger or create a dedicated one
+    audit_logger = logging.getLogger("audit")
+    audit_logger.setLevel(logging.INFO)
+    audit_logger.addHandler(audit_log_handler)
+    audit_logger.addHandler(console_handler) # Also show in console for dev
 
-    return logger
+    return logger, audit_logger
 
-# Initialize logger
-logger = setup_logging()
+# Initialize loggers
+logger, audit_logger = setup_logging()
